@@ -63,6 +63,46 @@ public class PlayListController {
         playlistRepo.save(playlist);
     }
 
+    @PostMapping("/playlists/playlistFromTags/{userId}")
+    public Playlist createPlaylistFromTags(@PathVariable("userId") String userId, @RequestBody List<String> tagsList){
+        List<String> notEmptyTags = tagsList.stream().filter(s -> !s.isEmpty()).collect(Collectors.toList());
+        if(notEmptyTags.isEmpty()) return null;
+
+        String generatedName = notEmptyTags.stream().reduce((s, s2) -> s + s2).get() + "-gen";
+        Playlist playlist = new Playlist(generatedName);
+
+        List<MP3FileFeatures> relevantMp3s =
+                playlistRepo.findPlaylistsByPlaylistNameAndUserId("global", userId).get(0)
+                .getMp3FileFeaturesList().stream().map(mp3Id ->  mp3Repo.findById(mp3Id).get())
+                .filter(mp3FileFeatures -> hasAtLeastOneTag(mp3FileFeatures, notEmptyTags)).collect(Collectors.toList());
+
+        relevantMp3s.forEach(mp3FileFeatures -> {
+            playlist.getMp3FileFeaturesList().add(mp3FileFeatures.getMp3Id());
+        });
+
+        Playlist savedPlaylist = playlistRepo.save(playlist);
+
+        relevantMp3s.forEach(mp3FileFeatures -> {
+            mp3FileFeatures.getPlaylists().add(savedPlaylist.getId());
+            mp3Repo.save(mp3FileFeatures);
+        });
+
+        User user = userRepo.findById(userId).get();
+        user.getPlaylists().add(savedPlaylist.getId());
+        userRepo.save(user);
+
+        savedPlaylist.setUserId(userId);
+        return playlistRepo.save(savedPlaylist);
+    }
+
+
+    private boolean hasAtLeastOneTag(MP3FileFeatures mp3FileFeatures, List<String> tags){
+        boolean res = false;
+        for(String tag: tags){
+            res |= mp3FileFeatures.getTags().contains(tag);
+        }
+        return res;
+    }
 
     @GetMapping("playlists/user/{userId}")
     public List<Playlist> getUserPlaylists(@PathVariable("userId") String userId){
