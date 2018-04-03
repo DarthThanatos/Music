@@ -9,21 +9,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.edu.agh.music.filestorage.StorageFileNotFoundException;
 import pl.edu.agh.music.filestorage.StorageService;
 
 
-@Controller
+@RestController
 public class MP3UploadController {
 
     private final StorageService storageService;
@@ -40,18 +32,15 @@ public class MP3UploadController {
         this.userRepo = userRepo;
     }
 
-    @GetMapping("files")
-    @ResponseBody
+    @GetMapping("/files")
     public List<String> listUploadedFilesRest(){
-        return
-                storageService
+        return storageService
                         .loadAll()
                         .map(Path::toString)
                         .collect(Collectors.toList());
     }
 
-    @GetMapping("userfiles/{userId}")
-    @ResponseBody
+    @GetMapping("/userfiles/{userId}")
     public List<String> listUserUploadedFiles(@PathVariable("userId") String userId){
         return storageService
                 .loadAllFromDir(userId)
@@ -59,57 +48,89 @@ public class MP3UploadController {
                 .collect(Collectors.toList());
     }
 
-    @GetMapping("/")
-    public String listUploadedFiles(Model model) throws IOException {
-
-        model.addAttribute("files",
-                storageService
-                        .loadAll()
-                        .map(Path::toString)
-                        .collect(Collectors.toList()));
-
-        return "uploadForm";
+    @GetMapping("/mp3s")
+    public List<MP3FileFeatures> getAllMp3s(){
+        return mp3Repo.findAll();
     }
 
-    @GetMapping("/files/{filename:.+}")
-    @ResponseBody
-    public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
-        Resource file = storageService.loadAsResource(filename);
+    @GetMapping("/mp3s/{musicId}")
+    public MP3FileFeatures getMp3ById(@PathVariable("musicId") String musicId){
+        return mp3Repo.findById(musicId).get();
+    }
+
+
+    @GetMapping("/userMp3s/{userId}")
+    public List<MP3FileFeatures> getAllUsersMp3Features(@PathVariable("userId") String userId){
+        return playlistRepo.findPlaylistsByPlaylistNameAndUserId("global", userId).get(0)
+                .getMp3FileFeaturesList().stream().map(s -> mp3Repo.findById(s).get()).collect(Collectors.toList());
+    }
+
+    @GetMapping("/userMp3s/{userId}/{musicId}")
+    public MP3FileFeatures getUserMp3ById(@PathVariable("userId") String userId, @PathVariable("musicId") String musicId){
+        if(playlistRepo.findPlaylistsByPlaylistNameAndUserId("global", userId).get(0).getMp3FileFeaturesList().contains(musicId))
+            return mp3Repo.findById(musicId).get();
+        return null;
+    }
+
+
+    @PutMapping("/userMp3s/{userId}/{musicId}")
+    public MP3FileFeatures updateUserMp3ById(@PathVariable("userId") String userId, @PathVariable("musicId") String musicId, @RequestBody MP3FileFeatures updater){
+        if(playlistRepo.findPlaylistsByPlaylistNameAndUserId("global", userId).get(0).getMp3FileFeaturesList().contains(musicId)){
+            MP3FileFeatures mp3FileFeatures = mp3Repo.findById(musicId).get();
+            mp3FileFeatures.setIconAddress(updater.getIconAddress());
+            mp3FileFeatures.setNativeText(updater.getNativeText());
+            mp3FileFeatures.setTranslationText(updater.getTranslationText());
+
+            if(!updater.getFileName().equals(mp3FileFeatures.getFileName())){
+                try {
+                    storageService.renameUserMusicFile(userId, mp3FileFeatures.getFileName(), updater.getFileName());
+                    mp3FileFeatures.setFileName(updater.getFileName());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return mp3Repo.save(mp3FileFeatures);
+        }
+        return null;
+    }
+
+
+    @DeleteMapping("/userMp3s/removeMp3Global/{userId}/{musicId}")
+    public void removeMp3FromUserAccount(@PathVariable("userId") String userId, @PathVariable("musicId") String musicId){
+        MP3FileFeatures mp3FileFeatures = mp3Repo.findById(musicId).get();
+        mp3FileFeatures.getPlaylists().forEach(playlistId ->
+        {
+            Playlist playlist = playlistRepo.findById(playlistId).get();
+            playlist.getMp3FileFeaturesList().remove(musicId);
+            playlistRepo.save(playlist);
+        });
+        storageService.deleteUserFile(userId, mp3FileFeatures.getFileName());
+        mp3Repo.delete(mp3FileFeatures);
+    }
+
+    @PutMapping("/userMp3s/addTag/{userId}/{musicId}/{tagName}")
+    public MP3FileFeatures addTagToMp3ById(@PathVariable("userId") String userId, @PathVariable("musicId") String musicId, @PathVariable("tagName") String tagName){
+        if(playlistRepo.findPlaylistsByPlaylistNameAndUserId("global", userId).get(0).getMp3FileFeaturesList().contains(musicId)){
+            MP3FileFeatures mp3FileFeatures = mp3Repo.findById(musicId).get();
+            if(!mp3FileFeatures.getTags().contains(tagName) && !tagName.isEmpty()) mp3FileFeatures.getTags().add(tagName);
+            return mp3Repo.save(mp3FileFeatures);
+        }
+        return null;
+    }
+
+    @GetMapping("/download/{userid}/{filename}")
+    public ResponseEntity<Resource> serveFile(@PathVariable("userid") String userId, @PathVariable("filename") String filename) {
+        Resource file = storageService.loadAsResource(userId + "//" + filename);
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
                 "attachment; filename=\"" + file.getFilename() + "\"").body(file);
     }
 
-
-    private String getExtension(String fileName){
-        String extension = "";
-
-        int i = fileName.lastIndexOf('.');
-        if (i > 0) {
-            extension = fileName.substring(i);
-        }
-        return extension.toLowerCase();
-    }
-
-    @PostMapping("/")
-    public String handleFileUpload(@RequestParam("filestorage") MultipartFile file,
-                                   RedirectAttributes redirectAttributes) {
-
-        if(!possibleExts.contains(getExtension(file.getOriginalFilename()))){
-            return "Fuck u";
-        }
-        storageService.store(file);
-        redirectAttributes.addFlashAttribute("message",
-                "You successfully uploaded " + file.getOriginalFilename() + "!");
-        return "redirect:/";
-    }
-
     @PostMapping("/up-mp3/{userId}")
-    @ResponseBody
     public MP3FileFeatures handleFileUploadRest(@PathVariable("userId") String userId, @RequestParam("file") MultipartFile file){
 
         MP3FileFeatures mp3FileFeatures = new MP3FileFeatures();
         if(!possibleExts.contains(getExtension(file.getOriginalFilename())) || !userRepo.existsById(userId)){
-            mp3FileFeatures.setFileName("Fuck u");
+            mp3FileFeatures.setFileName("Fuck u"); //fault tolerance mechanism yo
             return mp3FileFeatures;
         }
 
@@ -125,6 +146,16 @@ public class MP3UploadController {
         savedMp3FileFeatures.getPlaylists().add(playlist.getId());
         return mp3Repo.save(savedMp3FileFeatures);
 
+    }
+
+    private String getExtension(String fileName){
+        String extension = "";
+
+        int i = fileName.lastIndexOf('.');
+        if (i > 0) {
+            extension = fileName.substring(i);
+        }
+        return extension.toLowerCase();
     }
 
     @ExceptionHandler(StorageFileNotFoundException.class)

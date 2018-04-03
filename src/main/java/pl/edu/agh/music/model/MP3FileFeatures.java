@@ -1,7 +1,6 @@
 package pl.edu.agh.music.model;
 
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import pl.edu.agh.music.MusicApplication;
 
@@ -18,7 +17,7 @@ public class MP3FileFeatures {
     private String fileName;
     private String nativeText;
     private String translationText;
-    private List<String> attributes;
+    private List<String> tags = new ArrayList<>();
     private URI iconAddress;
 
     private List<String> playlists = new ArrayList<>();
@@ -63,12 +62,12 @@ public class MP3FileFeatures {
         this.translationText = translationText;
     }
 
-    public List<String> getAttributes() {
-        return attributes;
+    public List<String> getTags() {
+        return tags;
     }
 
-    public void setAttributes(List<String> attributes) {
-        this.attributes = attributes;
+    public void setTags(List<String> tags) {
+        this.tags = tags;
     }
 
     public URI getIconAddress() {

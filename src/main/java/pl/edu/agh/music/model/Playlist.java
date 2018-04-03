@@ -18,17 +18,8 @@ public class Playlist {
     private String playlistName;
     private URI iconAddress;
     private List<String> mp3FileFeaturesList = new ArrayList<>();
-
     private String userId;
 
-
-    Playlist(String playlistName){
-        this.playlistName = playlistName;
-    }
-
-    public String getId(){
-        return id;
-    }
 
 
     public Playlist()  {
@@ -39,17 +30,47 @@ public class Playlist {
         }
     }
 
+    Playlist(String playlistName){
+        this();
+        this.playlistName = playlistName;
+    }
+
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getUserId(){
+        return userId;
+    }
+
+    public List<String> getMp3FileFeaturesList() {
+        return mp3FileFeaturesList;
+    }
+
+
+    public String getId(){
+        return id;
+    }
 
     @Override
     public String toString(){
         return "Playlist " + playlistName + " of " + userId + " id " + id;
     }
 
-    public void setUserId(String userId) {
-        this.userId = userId;
+    public URI getIconAddress() {
+        return iconAddress;
     }
 
-    public List<String> getMp3FileFeaturesList() {
-        return mp3FileFeaturesList;
+    public void setIconAddress(URI iconAddress) {
+        this.iconAddress = iconAddress;
+    }
+
+    public void setPlaylistName(String playlistName){
+        this.playlistName = playlistName;
+    }
+
+    public String getPlaylistName(){
+        return playlistName;
     }
 }

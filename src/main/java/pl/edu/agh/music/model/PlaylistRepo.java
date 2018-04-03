@@ -7,4 +7,5 @@ import java.util.List;
 public interface PlaylistRepo extends MongoRepository<Playlist, String> {
 
     List<Playlist> findPlaylistsByPlaylistNameAndUserId(String playlistName, String userId);
+    List<Playlist> findPlaylistsByUserId(String userId);
 }

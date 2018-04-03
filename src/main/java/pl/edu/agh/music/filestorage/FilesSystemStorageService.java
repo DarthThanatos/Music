@@ -1,5 +1,6 @@
 package pl.edu.agh.music.filestorage;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
@@ -103,6 +104,24 @@ public class FilesSystemStorageService implements StorageService {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public void renameUserMusicFile(String userDir, String oldName, String newName) throws IOException {
+        File oldFile = new File(rootLocation + "//" + userDir + "//" + oldName);
+        File newFile = new File(rootLocation + "//" + userDir + "//" + newName);
+        if(newFile.exists()) throw new IOException("File Exists");
+        if(!oldFile.renameTo(newFile)) throw  new IOException("Could not rename for some reason");
+    }
+
+    @Override
+    public void deleteUserDir(String userDir) {
+        FileSystemUtils.deleteRecursively( Paths.get(rootLocation.toString(), userDir).toFile());
+    }
+
+    @Override
+    public void deleteUserFile(String userDir, String userFile) {
+        FileSystemUtils.deleteRecursively(Paths.get(rootLocation.toString(),userDir,userFile).toFile());
     }
 
     @Override

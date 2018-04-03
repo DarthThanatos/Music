@@ -43,11 +43,11 @@ public class MusicApplication {
     @Bean
     CommandLineRunner init(StorageService storageService, UserRepo userRepo, MP3Repo mp3Repo, PlaylistRepo playlistRepo) {
         return (args) -> {
-            userRepo.deleteAll();
-            mp3Repo.deleteAll();
-            playlistRepo.deleteAll();
-            storageService.deleteAll();
-            storageService.init();
+//            userRepo.deleteAll();
+//            mp3Repo.deleteAll();
+//            playlistRepo.deleteAll();
+//            storageService.deleteAll();
+//            storageService.init();
         };
     }
 
