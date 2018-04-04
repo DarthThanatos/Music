@@ -20,10 +20,14 @@ public class MP3FileFeatures {
     private List<String> tags = new ArrayList<>();
     private URI iconAddress;
 
+    private ArtistsInfo artistsInfo;
+    private long howLongListened = 0;
+
     private List<String> playlists = new ArrayList<>();
 
     public MP3FileFeatures(){
         try {
+            artistsInfo = new ArtistsInfo("Unknown artist");
             iconAddress = new URI(MusicApplication.DEFAULT_ICON_URL);
         } catch (URISyntaxException e) {
             e.printStackTrace();
@@ -84,5 +88,17 @@ public class MP3FileFeatures {
 
     public void setPlaylists(List<String> playlists) {
         this.playlists = playlists;
+    }
+
+    public ArtistsInfo getArtistsInfo() {
+        return artistsInfo;
+    }
+
+    public long getHowLongListened() {
+        return howLongListened;
+    }
+
+    public void setHowLongListened(long howLongListened) {
+        this.howLongListened = howLongListened;
     }
 }

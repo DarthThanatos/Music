@@ -80,7 +80,7 @@ public class MP3UploadController {
             mp3FileFeatures.setIconAddress(updater.getIconAddress());
             mp3FileFeatures.setNativeText(updater.getNativeText());
             mp3FileFeatures.setTranslationText(updater.getTranslationText());
-
+            mp3FileFeatures.setHowLongListened(updater.getHowLongListened());
             if(!updater.getFileName().equals(mp3FileFeatures.getFileName())){
                 try {
                     storageService.renameUserMusicFile(userId, mp3FileFeatures.getFileName(), updater.getFileName());
@@ -130,8 +130,7 @@ public class MP3UploadController {
 
         MP3FileFeatures mp3FileFeatures = new MP3FileFeatures();
         if(!possibleExts.contains(getExtension(file.getOriginalFilename())) || !userRepo.existsById(userId)){
-            mp3FileFeatures.setFileName("Fuck u"); //fault tolerance mechanism yo
-            return mp3FileFeatures;
+            return null;
         }
 
         storageService.storeInDir(userId + "//", file);
@@ -146,6 +145,28 @@ public class MP3UploadController {
         savedMp3FileFeatures.getPlaylists().add(playlist.getId());
         return mp3Repo.save(savedMp3FileFeatures);
 
+    }
+
+    @PutMapping("/userMp3s/addBandInfo/{userId}/{musicId}")
+    public MP3FileFeatures updateArtistsInfo(@PathVariable("userId") String userId, @PathVariable("musicId") String musicId, @RequestBody ArtistsInfo updater){
+        if(playlistRepo.findPlaylistsByPlaylistNameAndUserId("global", userId).get(0).getMp3FileFeaturesList().contains(musicId)){
+            MP3FileFeatures mp3FileFeatures = mp3Repo.findById(musicId).get();
+            if(updater.getBandName() != null) mp3FileFeatures.getArtistsInfo().setBandName(updater.getBandName());
+            if(updater.getArtistsNames() != null){
+                updater.getArtistsNames().forEach(artistName -> mp3FileFeatures.getArtistsInfo().addArtistName(artistName));
+            }
+            if(updater.getBandAliases() != null){
+                updater.getBandAliases().forEach(bandAlias -> mp3FileFeatures.getArtistsInfo().getBandAliases().add(bandAlias));
+            }
+            if(updater.getEventsInfo() != null){
+                updater.getEventsInfo().forEach(eventsInfo -> mp3FileFeatures.getArtistsInfo().getEventsInfo().add(eventsInfo));
+            }
+            if(updater.getToursInfo() != null){
+                updater.getToursInfo().forEach(tourInfo -> mp3FileFeatures.getArtistsInfo().getToursInfo().add(tourInfo));
+            }
+            return mp3Repo.save(mp3FileFeatures);
+        }
+        return null;
     }
 
     private String getExtension(String fileName){
